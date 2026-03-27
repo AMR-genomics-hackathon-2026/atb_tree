@@ -77,7 +77,7 @@ except Exception as e:
 
 # ── View selector ────────────────────────────────────────────────────────────────
 
-view = st.radio("View", ["Overview", "By gene", "By drug class", "Downloads"],
+view = st.radio("View", ["Overview", "By gene", "By drug class", "Species deep-dive", "Downloads"],
                 horizontal=True)
 
 st.divider()
@@ -262,6 +262,98 @@ elif view == "By drug class":
                                labels={"color": "% samples"})
             fig_h2.update_layout(height=500)
             st.plotly_chart(fig_h2, use_container_width=True)
+
+elif view == "Species deep-dive":
+    st.subheader("Species deep-dive")
+
+    species_list = sorted(df["Species"].dropna().unique())
+    selected_sp = st.selectbox("Select a species", species_list,
+                               index=species_list.index("Escherichia coli") if "Escherichia coli" in species_list else 0)
+
+    sp_df = df[df["Species"] == selected_sp].copy()
+    sp_amr = sp_df[sp_df["amr_present"] == True]
+    sp_total = len(sp_df)
+    sp_pos = len(sp_amr)
+    sp_pct = sp_pos / sp_total * 100 if sp_total > 0 else 0
+    avg_genes = sp_amr["amr_gene_count"].mean() if sp_pos > 0 else 0
+
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Total samples", f"{sp_total:,}")
+    m2.metric("AMR positive", f"{sp_pos:,}")
+    m3.metric("AMR prevalence", f"{sp_pct:.1f}%")
+    m4.metric("Avg genes (positive)", f"{avg_genes:.1f}")
+
+    st.divider()
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("**Top AMR genes**")
+        gene_counts = (
+            sp_amr["amr_genes"].dropna()
+            .str.split(";").explode().str.strip()
+            .loc[lambda s: s != ""].value_counts().head(20).reset_index()
+        )
+        gene_counts.columns = ["Gene", "Samples"]
+        gene_counts["% of species"] = (gene_counts["Samples"] / sp_total * 100).round(1)
+        fig_sg = px.bar(gene_counts, x="% of species", y="Gene", orientation="h",
+                        color="% of species", color_continuous_scale="Greens",
+                        hover_data={"Samples": True},
+                        labels={"Gene": "", "% of species": "% of all samples"})
+        fig_sg.update_layout(height=500, coloraxis_showscale=False,
+                             yaxis={"autorange": "reversed"})
+        st.plotly_chart(fig_sg, use_container_width=True)
+
+    with col2:
+        st.markdown("**Drug class breakdown**")
+        class_counts = (
+            sp_amr["amr_class_summary"].dropna()
+            .str.split(";").explode().str.strip()
+            .loc[lambda s: s != ""].value_counts().head(20).reset_index()
+        )
+        class_counts.columns = ["Drug class", "Samples"]
+        class_counts["% of species"] = (class_counts["Samples"] / sp_total * 100).round(1)
+        fig_sc = px.bar(class_counts, x="% of species", y="Drug class", orientation="h",
+                        color="% of species", color_continuous_scale="Reds",
+                        hover_data={"Samples": True},
+                        labels={"Drug class": "", "% of species": "% of all samples"})
+        fig_sc.update_layout(height=500, coloraxis_showscale=False,
+                             yaxis={"autorange": "reversed"})
+        st.plotly_chart(fig_sc, use_container_width=True)
+
+    # AMR gene count distribution
+    st.markdown("**AMR gene burden distribution**")
+    fig_dist = px.histogram(
+        sp_df, x="amr_gene_count", nbins=40,
+        color="amr_present",
+        color_discrete_map={True: "#c0392b", False: "#aaaaaa"},
+        labels={"amr_gene_count": "Number of acquired AMR genes",
+                "amr_present": "AMR positive"},
+        barmode="overlay",
+    )
+    fig_dist.update_layout(height=280)
+    st.plotly_chart(fig_dist, use_container_width=True)
+
+    # Multi-drug resistance breakdown
+    st.markdown("**Multi-drug resistance (MDR) profile**")
+    mdr = sp_amr.copy()
+    mdr["n_classes"] = mdr["amr_class_summary"].str.split(";").apply(
+        lambda x: len([c for c in x if c.strip()]) if isinstance(x, list) else 0
+    )
+    mdr_counts = mdr["n_classes"].value_counts().sort_index().reset_index()
+    mdr_counts.columns = ["Drug classes", "Samples"]
+    mdr_counts["Category"] = mdr_counts["Drug classes"].apply(
+        lambda n: "Susceptible" if n == 0 else ("Single class" if n == 1 else
+                  ("2 classes" if n == 2 else "MDR (3+ classes)"))
+    )
+    fig_mdr = px.bar(mdr_counts, x="Drug classes", y="Samples",
+                     color="Category",
+                     color_discrete_map={
+                         "Susceptible": "#aaaaaa", "Single class": "#f39c12",
+                         "2 classes": "#e67e22", "MDR (3+ classes)": "#c0392b"
+                     },
+                     labels={"Drug classes": "Number of drug classes with resistance"})
+    fig_mdr.update_layout(height=280)
+    st.plotly_chart(fig_mdr, use_container_width=True)
 
 elif view == "Downloads":
     st.subheader("Download files")
