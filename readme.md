@@ -2,6 +2,12 @@
 
 Annotates the [AllTheBacteria (ATB)](https://allthebacteria.readthedocs.io/) phylogenetic tree with [AMRFinderPlus](https://www.ncbi.nlm.nih.gov/pathogens/antimicrobial-resistance/AMRFinder/) results, filtered using [AMRrules](https://github.com/AMRverse/AMRrules) to exclude intrinsic wildtype-susceptible genes.
 
+## Explore the data
+
+> **[🌐 Landing page + interactive charts](https://amr-genomics-hackathon-2026.github.io/atb_tree/)**
+
+> **[🔬 Interactive Streamlit explorer](https://atb-amr-explorer.streamlit.app)** — filter by species, drug class, gene; download subsets
+
 ## View in Taxonium
 
 > **[▶ Open ATB tree with AMR annotation](https://taxonium.org/atb?addMetadataUrl=https://github.com/AMR-genomics-hackathon-2026/atb_tree/releases/latest/download/taxonium_metadata.tsv.gz)**
