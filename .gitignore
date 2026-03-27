@@ -1,0 +1,15 @@
+# Large data files — download via the pipeline scripts
+data/
+*.tsv
+*.tsv.gz
+*.parquet
+*.jsonl
+*.jsonl.gz
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
