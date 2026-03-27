@@ -10,10 +10,11 @@ amr_full <- amr_full[`Element type` == "AMR"]
 #target_cols <- c("Gene symbol", "Hierarchy node", "Subclass", "Class")
 target_cols <- c("Class","Subclass","Gene symbol")
 
+#Create presence absence csvs for different columns of AMRFP_results
 for (column in target_cols){
   amr_data <- amr_full[, .(Name, get(column))]
   setnames(amr_data, 2, "Target")
-  # Keep only unique combinations (binary presence-absence) observed more than once (e.g. for subclass)
+  # Keep only unique combinations (binary presence-absence) observed more than once (e.g. for class)
   amr_unique <- unique(amr_data)
   name_factor <- as.factor(amr_unique$Name)
   col_factor <- as.factor(amr_unique$Target)
@@ -40,14 +41,18 @@ for (column in target_cols){
   # Convert the sparse subset to a dense matrix, then to a data.table
   sparse_dt <- as.data.table(as.matrix(sparse_sub))
   
-  #Join atb tree metadata to the unique list
-  metadata <- fread("atb_tree/ATB_tree_taxonomic_assignments_GTDB.csv")
+  #Join reduced atb tree metadata to the unique list
+  metadata <- fread("ATB_tree_taxonomic_assignments_GTDB.csv",
+                  select = c("Sample", c("Family","Genus","Species")))
   metadata[, Sample := as.character(Sample)]
+  metadata[, is_representative := NULL]
+  metadata[, Root := NULL]
   #Add the 'Name' column back to join metadata
   sparse_dt[, Name := rownames(sparse_sub)]
   sparse_dt[, Name := as.character(Name)]
   #Merge matrix with ALL metadata columns
   final_output <- merge(metadata, sparse_dt, by.x = "Sample", by.y = "Name", all.y = TRUE)
+  final_output[final_output == 0] <- NA
   
   ##Write out the CSV
   fwrite(final_output, paste0("AMRFP_res_for_atb_tree_", gsub(" ", "_", column), ".csv"))
