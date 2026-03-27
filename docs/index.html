@@ -125,7 +125,7 @@
     <h2>AMR overview</h2>
     <div class="chart-grid">
       <div class="card">
-        <h3>Top species by sample count</h3>
+        <h3>Top species by AMR-positive samples (colour = prevalence %)</h3>
         <div id="chart-species" class="loading">Loading data…</div>
       </div>
       <div class="card">
@@ -256,14 +256,15 @@ function renderSpeciesChart(species) {
   const top = [...species].reverse();
   Plotly.newPlot(el, [{
     type: "bar", orientation: "h",
-    x: top.map(d => d.pct),
+    x: top.map(d => d.amr_pos),
     y: top.map(d => d.Species),
-    text: top.map(d => `${d.pct}%`),
-    textposition: "outside",
-    marker: { color: top.map(d => d.pct), colorscale: "Reds", showscale: false }
+    customdata: top.map(d => [d.total, d.pct]),
+    hovertemplate: "<b>%{y}</b><br>AMR positive: %{x:,}<br>Total samples: %{customdata[0]:,}<br>Prevalence: %{customdata[1]}%<extra></extra>",
+    marker: { color: top.map(d => d.pct), colorscale: "Reds", showscale: true,
+              colorbar: { title: "% AMR+", thickness: 12, len: 0.6 } }
   }], {
-    margin: { l: 200, r: 60, t: 10, b: 40 },
-    xaxis: { title: "% AMR positive" },
+    margin: { l: 200, r: 80, t: 10, b: 40 },
+    xaxis: { title: "AMR-positive samples" },
     yaxis: { tickfont: { size: 11 } },
     paper_bgcolor: "white", plot_bgcolor: "white"
   }, { responsive: true, displayModeBar: false });
