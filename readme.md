@@ -8,10 +8,10 @@ Annotates the [AllTheBacteria (ATB)](https://allthebacteria.readthedocs.io/) phy
 
 Colour by:
 - `Species` — GTDB species assignment
+- `Genus` / `Family` — higher-level taxonomy
 - `amr_class_summary` — drug classes with acquired resistance genes
 - `amr_present` — any acquired AMR gene (true/false)
 - `amr_gene_count` — number of distinct acquired genes
-- `Cluster` — GTDB subspecies cluster
 
 A binary presence-absence matrix version (one column per gene, top 500 genes) is also available:
 
@@ -70,7 +70,7 @@ python 04b_build_taxonium_metadata.py    # Merge with GTDB taxonomy, build outpu
 | `03_filter_and_aggregate.py` | Filter intrinsic genes; aggregate per sample |
 | `04b_build_taxonium_metadata.py` | Build Taxonium metadata using GTDB taxonomy |
 | `05_build_taxonium_jsonl.py` | (Optional) Embed metadata into ATB JSONL for self-hosting |
-| `AMRFP_to_treemeta.R` | R script: binary presence-absence matrices (original) |
+| `AMRFP_to_treemeta.R` | R script: binary presence-absence matrices; updated to split multi-class entries and reduce metadata to Family/Genus/Species |
 | `ReferenceGeneHierarchy.txt` | AMRFinderPlus gene hierarchy reference |
 | `atb_tree.tar.bz2` | ATB Newick tree + GTDB taxonomy assignments |
 | `config/taxonium_config.json` | Taxonium display configuration |
