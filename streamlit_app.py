@@ -6,6 +6,7 @@ Interactive exploration of AMRFinderPlus annotations on the AllTheBacteria tree.
 Data loaded from GitHub Release assets.
 """
 
+import gzip
 import io
 import requests
 import pandas as pd
@@ -59,11 +60,13 @@ st.set_page_config(
 
 @st.cache_data(show_spinner="Downloading data from GitHub Release…")
 def load_data(url: str, sep: str) -> pd.DataFrame:
-    resp = requests.get(url, timeout=180)
+    resp = requests.get(url, timeout=180, allow_redirects=True)
     resp.raise_for_status()
-    compression = "gzip" if url.endswith(".gz") else "infer"
-    df = pd.read_csv(io.BytesIO(resp.content), sep=sep, dtype=str,
-                     low_memory=False, compression=compression)
+    content = resp.content
+    # Explicitly decompress if gzip (magic bytes \x1f\x8b)
+    if content[:2] == b"\x1f\x8b":
+        content = gzip.decompress(content)
+    df = pd.read_csv(io.BytesIO(content), sep=sep, dtype=str, low_memory=False)
     return df
 
 
