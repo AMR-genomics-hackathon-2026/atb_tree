@@ -60,13 +60,9 @@ st.set_page_config(
 
 @st.cache_data(show_spinner="Downloading data from GitHub Release…")
 def load_data(url: str, sep: str) -> pd.DataFrame:
-    resp = requests.get(url, timeout=180, allow_redirects=True)
-    resp.raise_for_status()
-    content = resp.content
-    # Explicitly decompress if gzip (magic bytes \x1f\x8b)
-    if content[:2] == b"\x1f\x8b":
-        content = gzip.decompress(content)
-    df = pd.read_csv(io.BytesIO(content), sep=sep, dtype=str, low_memory=False)
+    # pandas reads URLs directly, follows redirects, and handles gzip automatically
+    df = pd.read_csv(url, sep=sep, dtype=str, low_memory=False, compression="gzip",
+                     storage_options={"User-Agent": "Mozilla/5.0"})
     return df
 
 
