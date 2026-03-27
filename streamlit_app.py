@@ -289,23 +289,27 @@ st.divider()
 
 # ── Data table ───────────────────────────────────────────────────────────────────
 
-st.subheader(f"Sample table ({total:,} rows)")
+TABLE_LIMIT = 2000
+st.subheader(f"Sample table ({total:,} rows — showing first {min(total, TABLE_LIMIT):,})")
 
 if is_summary:
     display_cols = ["sample_id", "Species", "Genus", "Family",
                     "amr_present", "amr_gene_count", "amr_class_summary", "amr_genes"]
     display_cols = [c for c in display_cols if c in filtered.columns]
 else:
-    # Show taxonomy + first 20 binary columns
     meta_cols = [c for c in ("Sample", "sample_id", "Species", "Genus", "Family") if c in filtered.columns]
     val_cols = [c for c in filtered.columns if c not in meta_cols][:20]
     display_cols = meta_cols + val_cols
 
-st.dataframe(filtered[display_cols].reset_index(drop=True), use_container_width=True, height=400)
+st.dataframe(filtered[display_cols].head(TABLE_LIMIT).reset_index(drop=True),
+             use_container_width=True, height=400)
+
+if total > TABLE_LIMIT:
+    st.caption(f"Table capped at {TABLE_LIMIT:,} rows for performance. Use the download button for the full dataset.")
 
 csv_bytes = filtered[display_cols].to_csv(index=False).encode()
 st.download_button(
-    label="Download filtered table (CSV)",
+    label=f"Download full filtered table ({total:,} rows, CSV)",
     data=csv_bytes,
     file_name="atb_amr_filtered.csv",
     mime="text/csv",

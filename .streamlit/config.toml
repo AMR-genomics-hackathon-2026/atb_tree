@@ -6,3 +6,4 @@ textColor = "#222222"
 
 [server]
 headless = true
+maxMessageSize = 300
