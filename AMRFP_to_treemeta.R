@@ -1,11 +1,19 @@
 #packages
 library(data.table)
 library(Matrix)
+library(data.table)
 
 #import AMRfinderplus data for allthebacteria https://osf.io/ck7st 
 amr_full <- fread("AMRFP_results.tsv", 
                   select = c("Name", c("Class","Subclass","Gene symbol","Element type")))
 amr_full <- amr_full[`Element type` == "AMR"]
+
+#remove rows that correspond to WT S via species
+metadata <- fread("ATB_tree_taxonomic_assignments_GTDB.csv",
+                  select = c("Sample", c("Family","Genus","Species")))
+metadata[, Sample := as.character(Sample)]
+#import amrrules WT S data (Species-Gene symbol list)
+#add something to remove rows where species and gene symbol match the amrrule list
 
 #target_cols <- c("Gene symbol", "Hierarchy node", "Subclass", "Class")
 target_cols <- c("Class","Subclass","Gene symbol")
@@ -14,6 +22,9 @@ target_cols <- c("Class","Subclass","Gene symbol")
 for (column in target_cols){
   amr_data <- amr_full[, .(Name, get(column))]
   setnames(amr_data, 2, "Target")
+  # This splits the string in "Target" and expands the rows
+  amr_data <- amr_data[, list(Target = unlist(strsplit(as.character(Target), "/"))), by = Name]
+  
   # Keep only unique combinations (binary presence-absence) observed more than once (e.g. for class)
   amr_unique <- unique(amr_data)
   name_factor <- as.factor(amr_unique$Name)
@@ -42,11 +53,6 @@ for (column in target_cols){
   sparse_dt <- as.data.table(as.matrix(sparse_sub))
   
   #Join reduced atb tree metadata to the unique list
-  metadata <- fread("ATB_tree_taxonomic_assignments_GTDB.csv",
-                  select = c("Sample", c("Family","Genus","Species")))
-  metadata[, Sample := as.character(Sample)]
-  metadata[, is_representative := NULL]
-  metadata[, Root := NULL]
   #Add the 'Name' column back to join metadata
   sparse_dt[, Name := rownames(sparse_sub)]
   sparse_dt[, Name := as.character(Name)]
