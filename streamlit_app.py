@@ -320,40 +320,43 @@ elif view == "Species deep-dive":
                              yaxis={"autorange": "reversed"})
         st.plotly_chart(fig_sc, use_container_width=True)
 
-    # AMR gene count distribution
-    st.markdown("**AMR gene burden distribution**")
-    fig_dist = px.histogram(
-        sp_df, x="amr_gene_count", nbins=40,
-        color="amr_present",
-        color_discrete_map={True: "#c0392b", False: "#aaaaaa"},
-        labels={"amr_gene_count": "Number of acquired AMR genes",
-                "amr_present": "AMR positive"},
-        barmode="overlay",
-    )
-    fig_dist.update_layout(height=280)
-    st.plotly_chart(fig_dist, use_container_width=True)
+    col3, col4 = st.columns(2)
 
-    # Multi-drug resistance breakdown
-    st.markdown("**Multi-drug resistance (MDR) profile**")
-    mdr = sp_amr.copy()
-    mdr["n_classes"] = mdr["amr_class_summary"].str.split(";").apply(
-        lambda x: len([c for c in x if c.strip()]) if isinstance(x, list) else 0
-    )
-    mdr_counts = mdr["n_classes"].value_counts().sort_index().reset_index()
-    mdr_counts.columns = ["Drug classes", "Samples"]
-    mdr_counts["Category"] = mdr_counts["Drug classes"].apply(
-        lambda n: "Susceptible" if n == 0 else ("Single class" if n == 1 else
-                  ("2 classes" if n == 2 else "MDR (3+ classes)"))
-    )
-    fig_mdr = px.bar(mdr_counts, x="Drug classes", y="Samples",
-                     color="Category",
-                     color_discrete_map={
-                         "Susceptible": "#aaaaaa", "Single class": "#f39c12",
-                         "2 classes": "#e67e22", "MDR (3+ classes)": "#c0392b"
-                     },
-                     labels={"Drug classes": "Number of drug classes with resistance"})
-    fig_mdr.update_layout(height=280)
-    st.plotly_chart(fig_mdr, use_container_width=True)
+    with col3:
+        # Pre-aggregate gene count distribution server-side
+        st.markdown("**AMR gene burden distribution**")
+        burden_pos = sp_amr["amr_gene_count"].value_counts().sort_index().reset_index()
+        burden_pos.columns = ["Gene count", "Samples"]
+        burden_pos["Status"] = "AMR positive"
+        burden_neg = pd.DataFrame({"Gene count": [0],
+                                   "Samples": [sp_total - sp_pos],
+                                   "Status": ["AMR negative"]})
+        burden = pd.concat([burden_neg, burden_pos], ignore_index=True)
+        fig_dist = px.bar(burden, x="Gene count", y="Samples", color="Status",
+                          color_discrete_map={"AMR positive": "#c0392b",
+                                             "AMR negative": "#aaaaaa"},
+                          labels={"Gene count": "Number of acquired AMR genes"},
+                          barmode="overlay")
+        fig_dist.update_layout(height=300)
+        st.plotly_chart(fig_dist, use_container_width=True)
+
+    with col4:
+        # Pre-aggregate MDR profile server-side
+        st.markdown("**Multi-drug resistance (MDR) profile**")
+        n_classes = sp_amr["amr_class_summary"].str.count(";").add(1).fillna(0).astype(int)
+        mdr_counts = n_classes.value_counts().sort_index().reset_index()
+        mdr_counts.columns = ["Drug classes", "Samples"]
+        mdr_counts["Category"] = mdr_counts["Drug classes"].apply(
+            lambda n: "Single class" if n == 1 else
+                      ("2 classes" if n == 2 else "MDR (3+ classes)")
+        )
+        fig_mdr = px.bar(mdr_counts, x="Drug classes", y="Samples", color="Category",
+                         color_discrete_map={"Single class": "#f39c12",
+                                            "2 classes": "#e67e22",
+                                            "MDR (3+ classes)": "#c0392b"},
+                         labels={"Drug classes": "Resistance drug classes"})
+        fig_mdr.update_layout(height=300)
+        st.plotly_chart(fig_mdr, use_container_width=True)
 
 elif view == "Downloads":
     st.subheader("Download files")
