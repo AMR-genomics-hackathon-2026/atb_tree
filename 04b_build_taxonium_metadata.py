@@ -123,8 +123,11 @@ def build_binary_matrix(gtdb: pd.DataFrame, amrfp_raw_path: Path,
         sub["_val"] = 1
         wide = sub.pivot_table(index="Name", columns=col, values="_val",
                                aggfunc="max", fill_value=0)
-        wide.columns = [f"{prefix}{c.replace(' ', '_').replace('/', '_')}"
-                        for c in wide.columns]
+        def _sanitise(name: str) -> str:
+            for ch in (" ", "/", "(", ")", "'", "-"):
+                name = name.replace(ch, "_")
+            return name.strip("_")
+        wide.columns = [f"{prefix}{_sanitise(c)}" for c in wide.columns]
         wide = wide.reset_index().rename(columns={"Name": "sample_id"})
         results = results.merge(wide, on="sample_id", how="left")
         # Fill missing (samples with no hits in this category) with 0
