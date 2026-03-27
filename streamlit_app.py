@@ -61,7 +61,9 @@ st.set_page_config(
 def load_data(url: str, sep: str) -> pd.DataFrame:
     resp = requests.get(url, timeout=180)
     resp.raise_for_status()
-    df = pd.read_csv(io.BytesIO(resp.content), sep=sep, dtype=str, low_memory=False)
+    compression = "gzip" if url.endswith(".gz") else "infer"
+    df = pd.read_csv(io.BytesIO(resp.content), sep=sep, dtype=str,
+                     low_memory=False, compression=compression)
     return df
 
 
