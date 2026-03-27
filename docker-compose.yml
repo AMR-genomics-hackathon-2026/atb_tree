@@ -1,0 +1,23 @@
+services:
+  taxonium-backend:
+    image: theosanderson/taxonium_backend:master
+    ports:
+      - "8080:80"
+    environment:
+      DATA_FILE: /data/atb_amr_annotated.jsonl.gz
+      CONFIG_JSON: /config/taxonium_config.json
+      MAXMEM: 16                          # GB; raise if OOM on large ATB tree
+    volumes:
+      - ./data/processed:/data:ro
+      - ./config:/config:ro
+    restart: unless-stopped
+
+  # Optional: Taxonium frontend pointing at local backend
+  # taxonium-frontend:
+  #   image: theosanderson/taxonium:master
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     REACT_APP_DEFAULT_BACKEND: http://localhost:8080
+  #   depends_on:
+  #     - taxonium-backend

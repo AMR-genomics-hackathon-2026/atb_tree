@@ -1,0 +1,6 @@
+requests>=2.31.0
+pandas>=2.0.0
+pyarrow>=14.0.0      # fast parquet I/O for large datasets
+tqdm>=4.66.0
+osfclient>=0.0.5     # OSF download helper
+pyyaml>=6.0

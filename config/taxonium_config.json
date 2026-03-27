@@ -1,0 +1,21 @@
+{
+  "title": "AllTheBacteria – AMR annotation",
+  "description": "AllTheBacteria phylogenetic tree annotated with AMRFinderPlus results (intrinsic WT genes excluded via AMRrules).",
+  "defaultColorByField": "amr_class_summary",
+  "overlays": [],
+  "colorMappings": {
+    "amr_present": {
+      "true":  "#d73027",
+      "false": "#4575b4",
+      "":      "#bbbbbb"
+    }
+  },
+  "metadataColumns": [
+    { "field": "species",           "label": "Species" },
+    { "field": "subspecies",        "label": "Subspecies" },
+    { "field": "amr_gene_count",    "label": "AMR gene count" },
+    { "field": "amr_class_summary", "label": "AMR drug classes" },
+    { "field": "amr_genes",         "label": "AMR genes (acquired)" },
+    { "field": "amr_highest_level", "label": "Resistance level" }
+  ]
+}
