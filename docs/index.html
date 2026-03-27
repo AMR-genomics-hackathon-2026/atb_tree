@@ -221,112 +221,66 @@
 </footer>
 
 <script>
-// ── Load summary TSV from release and render charts ─────────────────────────
+// ── Load pre-computed summary JSON (same origin — no CORS issues) ────────────
 
-const SUMMARY_URL =
-  "https://github.com/AMR-genomics-hackathon-2026/atb_tree/releases/latest/download/taxonium_metadata.tsv.gz";
-
-// Update Streamlit link if deployed
 document.getElementById("streamlit-link").href =
-  "https://atb-amr.streamlit.app";  // update once deployed
+  "https://atb-amr-explorer.streamlit.app";
 
 async function loadAndRender() {
   try {
-    const resp = await fetch(SUMMARY_URL);
+    const resp = await fetch("summary.json");
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-
-    const buf = await resp.arrayBuffer();
-    // Decompress gzip in browser using DecompressionStream
-    const ds = new DecompressionStream("gzip");
-    const writer = ds.writable.getWriter();
-    writer.write(buf);
-    writer.close();
-    const reader = ds.readable.getReader();
-    const chunks = [];
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
-    }
-    const text = new TextDecoder().decode(
-      chunks.reduce((a, b) => {
-        const c = new Uint8Array(a.length + b.length);
-        c.set(a); c.set(b, a.length); return c;
-      }, new Uint8Array(0))
-    );
-
-    const rows = parseTSV(text);
-    renderStats(rows);
-    renderSpeciesChart(rows);
-    renderClassChart(rows);
+    const data = await resp.json();
+    renderStats(data);
+    renderSpeciesChart(data.species);
+    renderClassChart(data.classes);
   } catch (e) {
     ["chart-species", "chart-classes"].forEach(id => {
       document.getElementById(id).innerHTML =
-        `<div class="error">Charts will appear once the release file is available.<br><small>${e}</small></div>`;
+        `<div class="error">Could not load chart data.<br><small>${e}</small></div>`;
     });
   }
 }
 
-function parseTSV(text) {
-  const lines = text.trim().split("\n");
-  const headers = lines[0].split("\t");
-  return lines.slice(1).map(line => {
-    const vals = line.split("\t");
-    return Object.fromEntries(headers.map((h, i) => [h, vals[i] ?? ""]));
-  });
+function renderStats(d) {
+  document.getElementById("stat-amr-pos").textContent = d.amr_pos.toLocaleString();
+  document.getElementById("stat-pct").textContent = d.pct + "%";
+  document.getElementById("stat-species").textContent = d.n_species.toLocaleString();
+  document.getElementById("stat-genes").textContent = d.n_genes.toLocaleString();
 }
 
-function renderStats(rows) {
-  const amrPos = rows.filter(r => r.amr_present === "True").length;
-  const pct = (amrPos / rows.length * 100).toFixed(1);
-  const species = new Set(rows.map(r => r.Species).filter(Boolean)).size;
-  const genes = new Set(
-    rows.flatMap(r => (r.amr_genes || "").split(";").map(g => g.trim()).filter(Boolean))
-  ).size;
-  document.getElementById("stat-amr-pos").textContent = amrPos.toLocaleString();
-  document.getElementById("stat-pct").textContent = pct + "%";
-  document.getElementById("stat-species").textContent = species.toLocaleString();
-  document.getElementById("stat-genes").textContent = genes.toLocaleString();
-}
-
-function renderSpeciesChart(rows) {
-  const counts = {};
-  rows.forEach(r => { if (r.Species) counts[r.Species] = (counts[r.Species] || 0) + 1; });
-  const top = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0,20);
+function renderSpeciesChart(species) {
   const el = document.getElementById("chart-species");
   el.innerHTML = "";
   el.style.height = "380px";
+  const top = [...species].reverse();
   Plotly.newPlot(el, [{
     type: "bar", orientation: "h",
-    x: top.map(d=>d[1]).reverse(),
-    y: top.map(d=>d[0]).reverse(),
-    marker: { color: "#c0392b" }
+    x: top.map(d => d.pct),
+    y: top.map(d => d.Species),
+    text: top.map(d => `${d.pct}%`),
+    textposition: "outside",
+    marker: { color: top.map(d => d.pct), colorscale: "Reds", showscale: false }
   }], {
-    margin: { l: 180, r: 20, t: 10, b: 40 },
-    xaxis: { title: "Samples" },
+    margin: { l: 200, r: 60, t: 10, b: 40 },
+    xaxis: { title: "% AMR positive" },
     yaxis: { tickfont: { size: 11 } },
     paper_bgcolor: "white", plot_bgcolor: "white"
   }, { responsive: true, displayModeBar: false });
 }
 
-function renderClassChart(rows) {
-  const counts = {};
-  rows.forEach(r => {
-    (r.amr_class_summary || "").split(";").forEach(c => {
-      c = c.trim(); if (c) counts[c] = (counts[c] || 0) + 1;
-    });
-  });
-  const top = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0,20);
+function renderClassChart(classes) {
   const el = document.getElementById("chart-classes");
   el.innerHTML = "";
   el.style.height = "380px";
+  const top = [...classes].reverse();
   Plotly.newPlot(el, [{
     type: "bar", orientation: "h",
-    x: top.map(d=>d[1]).reverse(),
-    y: top.map(d=>d[0]).reverse(),
-    marker: { color: "#2471a3" }
+    x: top.map(d => d.count),
+    y: top.map(d => d.name),
+    marker: { color: top.map(d => d.count), colorscale: "Blues", showscale: false }
   }], {
-    margin: { l: 180, r: 20, t: 10, b: 40 },
+    margin: { l: 200, r: 60, t: 10, b: 40 },
     xaxis: { title: "Samples" },
     yaxis: { tickfont: { size: 11 } },
     paper_bgcolor: "white", plot_bgcolor: "white"
