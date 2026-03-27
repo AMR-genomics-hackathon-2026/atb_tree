@@ -60,10 +60,13 @@ st.set_page_config(
 
 @st.cache_data(show_spinner="Downloading data from GitHub Release…")
 def load_data(url: str, sep: str) -> pd.DataFrame:
-    # pandas reads URLs directly, follows redirects, and handles gzip automatically
-    df = pd.read_csv(url, sep=sep, dtype=str, low_memory=False, compression="gzip",
-                     storage_options={"User-Agent": "Mozilla/5.0"})
-    return df
+    # Accept-Encoding: identity prevents requests from auto-decompressing,
+    # so we always receive raw gzip bytes regardless of server headers
+    resp = requests.get(url, allow_redirects=True, timeout=300,
+                        headers={"Accept-Encoding": "identity"})
+    resp.raise_for_status()
+    content = gzip.decompress(resp.content)
+    return pd.read_csv(io.BytesIO(content), sep=sep, dtype=str, low_memory=False)
 
 
 def prepare_summary(df: pd.DataFrame) -> pd.DataFrame:
