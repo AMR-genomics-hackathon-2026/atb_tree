@@ -147,10 +147,8 @@ else:
     selected_classes = []
     amr_filter = "All"
 
-    # Binary matrix: filter by presence of specific columns
-    binary_cols = [c for c in df.columns if c.startswith(("gene_", "class_", "subclass_"))
-                   or (c not in ("Sample", "sample_id", "Species", "Genus", "Family", "Name")
-                       and df[c].isin(["0", "1", 0, 1]).all())]
+    # Binary matrix: detect AMR columns by prefix
+    binary_cols = [c for c in df.columns if c.startswith(("gene_", "class_", "subclass_"))]
     if binary_cols:
         selected_cols = st.sidebar.multiselect(
             "Show only samples positive for…",
@@ -183,7 +181,7 @@ else:
     if selected_cols:
         for col in selected_cols:
             if col in filtered.columns:
-                filtered = filtered[filtered[col].astype(str).isin(["1", "1.0"])]
+                filtered = filtered[filtered[col] == "present"]
 
 if sample_search and sample_col in filtered.columns:
     filtered = filtered[filtered[sample_col].str.contains(sample_search, na=False)]
@@ -267,23 +265,27 @@ if is_summary:
 else:
     # Binary mode: heatmap of top prevalent genes across top species
     st.subheader("Gene/class prevalence across species (top 20 × top 20)")
-    binary_data_cols = [c for c in filtered.columns
-                        if c not in ("Sample", "sample_id", "Species", "Genus", "Family", "Name")][:500]
-    if "Species" in filtered.columns and binary_data_cols:
+    amr_cols = [c for c in filtered.columns if c.startswith(("gene_", "class_", "subclass_"))]
+    if "Species" in filtered.columns and amr_cols and len(filtered) > 0:
         heat_df = filtered.copy()
-        heat_df[binary_data_cols] = heat_df[binary_data_cols].apply(pd.to_numeric, errors="coerce").fillna(0)
-        top_genes = heat_df[binary_data_cols].sum().sort_values(ascending=False).head(20).index.tolist()
+        # Convert "present"/"" to 1/0 for aggregation
+        for c in amr_cols:
+            heat_df[c] = (heat_df[c] == "present").astype(int)
+        top_genes = heat_df[amr_cols].sum().sort_values(ascending=False).head(20).index.tolist()
         top_species = heat_df["Species"].value_counts().head(20).index.tolist()
-        heat = (
-            heat_df[heat_df["Species"].isin(top_species)]
-            .groupby("Species")[top_genes].mean() * 100
-        )
-        fig4 = px.imshow(
-            heat, aspect="auto", color_continuous_scale="Blues",
-            labels={"color": "% positive"},
-        )
-        fig4.update_layout(height=500)
-        st.plotly_chart(fig4, use_container_width=True)
+        if top_genes and top_species:
+            heat = (
+                heat_df[heat_df["Species"].isin(top_species)]
+                .groupby("Species")[top_genes].mean() * 100
+            )
+            fig4 = px.imshow(
+                heat, aspect="auto", color_continuous_scale="Blues",
+                labels={"color": "% positive"},
+            )
+            fig4.update_layout(height=500)
+            st.plotly_chart(fig4, use_container_width=True)
+    elif len(filtered) == 0:
+        st.info("No samples match the current filters.")
 
 st.divider()
 
