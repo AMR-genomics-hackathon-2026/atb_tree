@@ -58,15 +58,17 @@ st.set_page_config(
 
 # ── Data loading ────────────────────────────────────────────────────────────────
 
+BINARY_SAMPLE_ROWS = 100_000  # cap binary matrix load to avoid memory crash
+
 @st.cache_data(show_spinner="Downloading data from GitHub Release…")
-def load_data(url: str, sep: str) -> pd.DataFrame:
-    # Accept-Encoding: identity prevents requests from auto-decompressing,
-    # so we always receive raw gzip bytes regardless of server headers
+def load_data(url: str, sep: str, max_rows: int = 0) -> pd.DataFrame:
     resp = requests.get(url, allow_redirects=True, timeout=300,
                         headers={"Accept-Encoding": "identity"})
     resp.raise_for_status()
     content = gzip.decompress(resp.content)
-    return pd.read_csv(io.BytesIO(content), sep=sep, dtype=str, low_memory=False)
+    nrows = max_rows if max_rows > 0 else None
+    return pd.read_csv(io.BytesIO(content), sep=sep, dtype=str,
+                       low_memory=False, nrows=nrows)
 
 
 def prepare_summary(df: pd.DataFrame) -> pd.DataFrame:
@@ -110,7 +112,10 @@ st.divider()
 # ── Load data ───────────────────────────────────────────────────────────────────
 
 try:
-    df_raw = load_data(meta["url"], meta["sep"])
+    max_rows = BINARY_SAMPLE_ROWS if meta["mode"] == "binary" else 0
+    df_raw = load_data(meta["url"], meta["sep"], max_rows=max_rows)
+    if meta["mode"] == "binary":
+        st.info(f"Binary matrix: showing a {BINARY_SAMPLE_ROWS:,}-row sample for performance. Download for the full dataset.")
 except Exception as e:
     st.error(f"Could not load dataset: {e}")
     st.stop()
