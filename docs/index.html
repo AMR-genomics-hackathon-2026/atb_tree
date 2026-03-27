@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ATB AMR Annotation</title>
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+  <style>
+    :root {
+      --accent: #c0392b;
+      --accent2: #2471a3;
+      --bg: #f9f9f9;
+      --card: #ffffff;
+      --border: #e0e0e0;
+      --text: #222;
+      --muted: #666;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+
+    header {
+      background: linear-gradient(135deg, #1a252f 0%, #2c3e50 100%);
+      color: white;
+      padding: 3rem 2rem 2.5rem;
+      text-align: center;
+    }
+    header h1 { font-size: 2.2rem; font-weight: 700; margin-bottom: 0.5rem; }
+    header p { font-size: 1.1rem; opacity: 0.85; max-width: 700px; margin: 0 auto 1.5rem; }
+
+    .btn-row { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-block; padding: 0.65rem 1.4rem; border-radius: 6px;
+      font-weight: 600; font-size: 0.95rem; text-decoration: none; transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-secondary { background: var(--accent2); color: white; }
+    .btn-ghost { background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.4); }
+
+    main { max-width: 1100px; margin: 0 auto; padding: 2.5rem 1.5rem; }
+
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2.5rem; }
+    .stat-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 1.2rem 1.5rem; text-align: center;
+    }
+    .stat-card .val { font-size: 2rem; font-weight: 700; color: var(--accent); }
+    .stat-card .lbl { font-size: 0.85rem; color: var(--muted); margin-top: 0.2rem; }
+
+    .section { margin-bottom: 2.5rem; }
+    .section h2 { font-size: 1.3rem; font-weight: 600; margin-bottom: 1rem; border-left: 4px solid var(--accent); padding-left: 0.75rem; }
+
+    .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 700px) { .chart-grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem;
+    }
+    .card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+    .loading { color: var(--muted); font-size: 0.9rem; padding: 2rem; text-align: center; }
+    .error { color: var(--accent); font-size: 0.9rem; padding: 1rem; background: #fdf2f2; border-radius: 6px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    th { background: #f0f0f0; padding: 0.6rem 0.8rem; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+    td { padding: 0.5rem 0.8rem; border-bottom: 1px solid var(--border); }
+    tr:hover td { background: #fafafa; }
+
+    .pipeline-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+    .step { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.2rem; }
+    .step .num { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+    .step .title { font-weight: 600; margin: 0.3rem 0 0.2rem; }
+    .step .desc { font-size: 0.85rem; color: var(--muted); }
+
+    .filter-row { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .filter-row input, .filter-row select {
+      padding: 0.45rem 0.75rem; border: 1px solid var(--border); border-radius: 6px;
+      font-size: 0.9rem; background: white;
+    }
+    .filter-row input { flex: 1; min-width: 200px; }
+
+    footer { text-align: center; padding: 2rem; font-size: 0.82rem; color: var(--muted); border-top: 1px solid var(--border); }
+    footer a { color: var(--accent2); }
+
+    .tag { display: inline-block; background: #eaf4fb; color: var(--accent2); border-radius: 4px; padding: 0.1rem 0.5rem; font-size: 0.78rem; margin: 0.1rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🧬 AllTheBacteria — AMR Annotation</h1>
+  <p>
+    AMRFinderPlus results across ~2.4 million bacterial genomes, with intrinsic
+    wildtype-susceptible genes filtered using AMRrules.
+  </p>
+  <div class="btn-row">
+    <a class="btn btn-primary" href="https://taxonium.org/atb?addMetadataUrl=https://github.com/AMR-genomics-hackathon-2026/atb_tree/releases/latest/download/taxonium_metadata.tsv.gz">
+      ▶ View tree (summary)
+    </a>
+    <a class="btn btn-secondary" href="https://taxonium.org/atb?addMetadataUrl=https://github.com/AMR-genomics-hackathon-2026/atb_tree/releases/latest/download/taxonium_metadata_binary.tsv.gz">
+      ▶ View tree (gene matrix)
+    </a>
+    <a class="btn btn-ghost" href="https://github.com/AMR-genomics-hackathon-2026/atb_tree">
+      GitHub Repo
+    </a>
+    <a class="btn btn-ghost" id="streamlit-link" href="#">
+      🔬 Interactive Explorer
+    </a>
+  </div>
+</header>
+
+<main>
+
+  <!-- Stats -->
+  <div class="stats-row" id="stats-row">
+    <div class="stat-card"><div class="val">~2.4M</div><div class="lbl">Total genomes</div></div>
+    <div class="stat-card"><div class="val" id="stat-amr-pos">—</div><div class="lbl">AMR positive</div></div>
+    <div class="stat-card"><div class="val" id="stat-pct">—</div><div class="lbl">Prevalence</div></div>
+    <div class="stat-card"><div class="val" id="stat-species">—</div><div class="lbl">Species</div></div>
+    <div class="stat-card"><div class="val" id="stat-genes">—</div><div class="lbl">Unique AMR genes</div></div>
+  </div>
+
+  <!-- Charts -->
+  <div class="section">
+    <h2>AMR overview</h2>
+    <div class="chart-grid">
+      <div class="card">
+        <h3>Top species by sample count</h3>
+        <div id="chart-species" class="loading">Loading data…</div>
+      </div>
+      <div class="card">
+        <h3>Top drug classes</h3>
+        <div id="chart-classes" class="loading">Loading data…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pipeline -->
+  <div class="section">
+    <h2>How it works</h2>
+    <div class="pipeline-steps">
+      <div class="step">
+        <div class="num">01</div>
+        <div class="title">Fetch AMRrules</div>
+        <div class="desc">Download species-specific intrinsic gene definitions from AMRrules</div>
+      </div>
+      <div class="step">
+        <div class="num">02</div>
+        <div class="title">Fetch AMRFinderPlus</div>
+        <div class="desc">Download ~691 MB of AMRFinderPlus results from OSF (osf.io/ck7st)</div>
+      </div>
+      <div class="step">
+        <div class="num">03</div>
+        <div class="title">Filter &amp; aggregate</div>
+        <div class="desc">Remove intrinsic genes using Scope=core + AMRrules species-aware lookup</div>
+      </div>
+      <div class="step">
+        <div class="num">04</div>
+        <div class="title">Build metadata</div>
+        <div class="desc">Merge with GTDB taxonomy; produce summary + binary presence-absence matrix</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Downloads -->
+  <div class="section">
+    <h2>Downloads</h2>
+    <div class="card">
+      <table>
+        <thead><tr><th>File</th><th>Size</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><a href="https://github.com/AMR-genomics-hackathon-2026/atb_tree/releases/latest/download/taxonium_metadata.tsv.gz">taxonium_metadata.tsv.gz</a></td>
+            <td>~13 MB</td>
+            <td>One row per sample — AMR class summary + GTDB taxonomy</td>
+          </tr>
+          <tr>
+            <td><a href="https://github.com/AMR-genomics-hackathon-2026/atb_tree/releases/latest/download/taxonium_metadata_binary.tsv.gz">taxonium_metadata_binary.tsv.gz</a></td>
+            <td>~13 MB</td>
+            <td>Binary matrix — top 500 genes, 100 classes, 200 subclasses</td>
+          </tr>
+          <tr>
+            <td><a href="https://github.com/AMR-genomics-hackathon-2026/atb_tree/releases/latest/download/meta.tar.gz">meta.tar.gz</a></td>
+            <td>~49 MB</td>
+            <td>Full sample metadata (Rebecca Gladstone)</td>
+          </tr>
+          <tr>
+            <td><a href="https://github.com/AMR-genomics-hackathon-2026/atb_tree/releases/latest/download/AMRFP_res_for_atb_tree_Class.csv.gz">AMRFP_res_for_atb_tree_Class.csv.gz</a></td>
+            <td>~11 MB</td>
+            <td>Binary matrix by drug class (R script output)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Citation -->
+  <div class="section">
+    <h2>Citation</h2>
+    <div class="card" style="font-size:0.9rem; line-height:1.8;">
+      <p>If you use this resource, please cite:</p>
+      <ul style="margin: 0.75rem 0 0 1.2rem;">
+        <li><strong>AllTheBacteria:</strong> Blackwell et al., 2024 — <a href="https://www.biorxiv.org/content/10.1101/2024.03.08.584059">biorxiv</a></li>
+        <li><strong>AMRFinderPlus:</strong> Feldgarden et al., 2021 — <a href="https://doi.org/10.1038/s41598-021-91456-0">doi:10.1038/s41598-021-91456-0</a></li>
+        <li><strong>AMRrules:</strong> Mather et al. — <a href="https://github.com/AMRverse/AMRrules">github.com/AMRverse/AMRrules</a></li>
+        <li><strong>Taxonium:</strong> Sanderson, 2022 — <a href="https://elifesciences.org/articles/82392">eLife 82392</a></li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <p>
+    <a href="https://github.com/AMR-genomics-hackathon-2026/atb_tree">GitHub</a> ·
+    AMR Genomics Hackathon 2026 ·
+    Data from <a href="https://allthebacteria.readthedocs.io/">AllTheBacteria</a>,
+    <a href="https://www.ncbi.nlm.nih.gov/pathogens/antimicrobial-resistance/AMRFinder/">AMRFinderPlus</a>,
+    <a href="https://gtdb.ecogenomic.org/">GTDB</a>
+  </p>
+</footer>
+
+<script>
+// ── Load summary TSV from release and render charts ─────────────────────────
+
+const SUMMARY_URL =
+  "https://github.com/AMR-genomics-hackathon-2026/atb_tree/releases/latest/download/taxonium_metadata.tsv.gz";
+
+// Update Streamlit link if deployed
+document.getElementById("streamlit-link").href =
+  "https://atb-amr.streamlit.app";  // update once deployed
+
+async function loadAndRender() {
+  try {
+    const resp = await fetch(SUMMARY_URL);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    const buf = await resp.arrayBuffer();
+    // Decompress gzip in browser using DecompressionStream
+    const ds = new DecompressionStream("gzip");
+    const writer = ds.writable.getWriter();
+    writer.write(buf);
+    writer.close();
+    const reader = ds.readable.getReader();
+    const chunks = [];
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+    }
+    const text = new TextDecoder().decode(
+      chunks.reduce((a, b) => {
+        const c = new Uint8Array(a.length + b.length);
+        c.set(a); c.set(b, a.length); return c;
+      }, new Uint8Array(0))
+    );
+
+    const rows = parseTSV(text);
+    renderStats(rows);
+    renderSpeciesChart(rows);
+    renderClassChart(rows);
+  } catch (e) {
+    ["chart-species", "chart-classes"].forEach(id => {
+      document.getElementById(id).innerHTML =
+        `<div class="error">Charts will appear once the release file is available.<br><small>${e}</small></div>`;
+    });
+  }
+}
+
+function parseTSV(text) {
+  const lines = text.trim().split("\n");
+  const headers = lines[0].split("\t");
+  return lines.slice(1).map(line => {
+    const vals = line.split("\t");
+    return Object.fromEntries(headers.map((h, i) => [h, vals[i] ?? ""]));
+  });
+}
+
+function renderStats(rows) {
+  const amrPos = rows.filter(r => r.amr_present === "True").length;
+  const pct = (amrPos / rows.length * 100).toFixed(1);
+  const species = new Set(rows.map(r => r.Species).filter(Boolean)).size;
+  const genes = new Set(
+    rows.flatMap(r => (r.amr_genes || "").split(";").map(g => g.trim()).filter(Boolean))
+  ).size;
+  document.getElementById("stat-amr-pos").textContent = amrPos.toLocaleString();
+  document.getElementById("stat-pct").textContent = pct + "%";
+  document.getElementById("stat-species").textContent = species.toLocaleString();
+  document.getElementById("stat-genes").textContent = genes.toLocaleString();
+}
+
+function renderSpeciesChart(rows) {
+  const counts = {};
+  rows.forEach(r => { if (r.Species) counts[r.Species] = (counts[r.Species] || 0) + 1; });
+  const top = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0,20);
+  const el = document.getElementById("chart-species");
+  el.innerHTML = "";
+  el.style.height = "380px";
+  Plotly.newPlot(el, [{
+    type: "bar", orientation: "h",
+    x: top.map(d=>d[1]).reverse(),
+    y: top.map(d=>d[0]).reverse(),
+    marker: { color: "#c0392b" }
+  }], {
+    margin: { l: 180, r: 20, t: 10, b: 40 },
+    xaxis: { title: "Samples" },
+    yaxis: { tickfont: { size: 11 } },
+    paper_bgcolor: "white", plot_bgcolor: "white"
+  }, { responsive: true, displayModeBar: false });
+}
+
+function renderClassChart(rows) {
+  const counts = {};
+  rows.forEach(r => {
+    (r.amr_class_summary || "").split(";").forEach(c => {
+      c = c.trim(); if (c) counts[c] = (counts[c] || 0) + 1;
+    });
+  });
+  const top = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0,20);
+  const el = document.getElementById("chart-classes");
+  el.innerHTML = "";
+  el.style.height = "380px";
+  Plotly.newPlot(el, [{
+    type: "bar", orientation: "h",
+    x: top.map(d=>d[1]).reverse(),
+    y: top.map(d=>d[0]).reverse(),
+    marker: { color: "#2471a3" }
+  }], {
+    margin: { l: 180, r: 20, t: 10, b: 40 },
+    xaxis: { title: "Samples" },
+    yaxis: { tickfont: { size: 11 } },
+    paper_bgcolor: "white", plot_bgcolor: "white"
+  }, { responsive: true, displayModeBar: false });
+}
+
+loadAndRender();
+</script>
+</body>
+</html>

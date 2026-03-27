@@ -4,3 +4,7 @@ pyarrow>=14.0.0      # fast parquet I/O for large datasets
 tqdm>=4.66.0
 osfclient>=0.0.5     # OSF download helper
 pyyaml>=6.0
+
+# Streamlit app
+streamlit>=1.35.0
+plotly>=5.22.0
