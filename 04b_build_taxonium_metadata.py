@@ -101,7 +101,7 @@ def build_binary_matrix(gtdb: pd.DataFrame, amrfp_raw_path: Path,
     ].copy()
     print(f"  {len(raw):,} acquired AMR rows across {raw['Name'].nunique():,} samples")
 
-    results = gtdb[["sample_id", "Species", "Genus", "Cluster"]].copy()
+    results = gtdb[["sample_id", "Family", "Genus", "Species"]].copy()
 
     for level, col, top_n, prefix in [
         ("Gene symbol", "Gene symbol", TOP_GENES,    "gene_"),
@@ -109,12 +109,17 @@ def build_binary_matrix(gtdb: pd.DataFrame, amrfp_raw_path: Path,
         ("Subclass",    "Subclass",    TOP_SUBCLASS, "subclass_"),
     ]:
         print(f"  Building {level} matrix (top {top_n}) …")
-        top_vals = (raw[col].dropna()
+        # Split on "/" separator before counting (mirrors R: strsplit(Target, "/"))
+        sub = raw[["Name", col]].dropna().copy()
+        sub = sub.assign(**{col: sub[col].str.split("/")}).explode(col)
+        sub[col] = sub[col].str.strip()
+
+        top_vals = (sub[col].dropna()
                             .value_counts()
                             .head(top_n)
                             .index.tolist())
 
-        sub = raw[raw[col].isin(top_vals)][["Name", col]].drop_duplicates()
+        sub = sub[sub[col].isin(top_vals)].drop_duplicates()
         sub["_val"] = 1
         wide = sub.pivot_table(index="Name", columns=col, values="_val",
                                aggfunc="max", fill_value=0)
