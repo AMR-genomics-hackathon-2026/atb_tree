@@ -120,9 +120,9 @@ def build_binary_matrix(gtdb: pd.DataFrame, amrfp_raw_path: Path,
                             .index.tolist())
 
         sub = sub[sub[col].isin(top_vals)].drop_duplicates()
-        sub["_val"] = 1
+        sub["_val"] = "present"
         wide = sub.pivot_table(index="Name", columns=col, values="_val",
-                               aggfunc="max", fill_value=0)
+                               aggfunc="first", fill_value="")
         def _sanitise(name: str) -> str:
             for ch in (" ", "/", "(", ")", "'", "-"):
                 name = name.replace(ch, "_")
@@ -130,9 +130,9 @@ def build_binary_matrix(gtdb: pd.DataFrame, amrfp_raw_path: Path,
         wide.columns = [f"{prefix}{_sanitise(c)}" for c in wide.columns]
         wide = wide.reset_index().rename(columns={"Name": "sample_id"})
         results = results.merge(wide, on="sample_id", how="left")
-        # Fill missing (samples with no hits in this category) with 0
+        # Fill missing samples (not in pivot) with empty string
         binary_cols = [c for c in results.columns if c.startswith(prefix)]
-        results[binary_cols] = results[binary_cols].fillna(0).astype(np.int8)
+        results[binary_cols] = results[binary_cols].fillna("")
 
     print(f"  Binary matrix: {len(results):,} rows, {len(results.columns):,} columns")
     return results
